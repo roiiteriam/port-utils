@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gantt desde Port.io</title>
+
+  <!-- Frappe Gantt -->
+  <link rel="stylesheet" href="https://unpkg.com/frappe-gantt/dist/frappe-gantt.css">
+  <script src="https://unpkg.com/frappe-gantt/dist/frappe-gantt.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f5f5f5;
+    }
+    #gantt {
+      padding: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="gantt"></div>
+
+  <script>
+    // -----------------------------
+    // 1. Obtener parámetros del iframe
+    // -----------------------------
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    // -----------------------------
+    // 2. Leer el parámetro "data"
+    // -----------------------------
+    const rawData = getQueryParam("data");
+
+    if (!rawData) {
+      document.body.innerHTML = "<h2>No se recibieron datos desde Port.io</h2>";
+      throw new Error("No data received");
+    }
+
+    // Decodificar JSON
+    let issues = [];
+    try {
+      issues = JSON.parse(decodeURIComponent(rawData));
+    } catch (e) {
+      document.body.innerHTML = "<h2>Error al parsear los datos</h2>";
+      throw e;
+    }
+
+    // -----------------------------
+    // 3. Convertir issues → tareas Frappe Gantt
+    // -----------------------------
+    const tasks = issues
+      .filter(i => i.startDate && i.dueDate)
+      .map(i => ({
+        id: i.id,
+        name: i.summary,
+        start: i.startDate,
+        end: i.dueDate,
+        progress: i.status === "Done" ? 100 : 0,
+        dependencies: i.dependencies?.join(",") || ""
+      }));
+
+    // -----------------------------
+    // 4. Renderizar el Gantt
+    // -----------------------------
+    const container = document.getElementById("gantt");
+
+    new Gantt(container, tasks, {
+      view_mode: "Week",
+      date_format: "YYYY-MM-DD",
+      custom_popup_html: task => `
+        <div class="details-container">
+          <h5>${task.name}</h5>
+          <p><b>Inicio:</b> ${task.start}</p>
+          <p><b>Fin:</b> ${task.end}</p>
+          <p><b>Progreso:</b> ${task.progress}%</p>
+        </div>
+      `
+    });
+  </script>
+</body>
+</html>
